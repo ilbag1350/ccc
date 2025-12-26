@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Calculator</title>
+    <!-- Mobile app settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#064e3b">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2344/2344132.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #064e3b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            touch-action: manipulation;
+        }
+
+        .calculator-card {
+            background-color: #f3f4f6;
+            border-radius: 1.5rem;
+            padding: 1.25rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 340px; 
+            border: 2px solid #000000;
+        }
+
+        .display-container {
+            height: 180px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0.75rem; 
+            margin-bottom: 1rem;
+            background-color: #e8f5e9;
+            border-radius: 1rem;
+            border: 2px solid #000000;
+            position: relative;
+        }
+
+        .memory-area {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 90%;
+            max-height: 60px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            z-index: 10;
+        }
+        .memory-area::-webkit-scrollbar { display: none; }
+
+        .memory-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .memory-row.active {
+            opacity: 1;
+        }
+
+        .memory-tag {
+            font-size: 0.9rem; 
+            font-weight: 900;
+            background: #059669;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 4px;
+            min-width: 32px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .memory-preview {
+            font-size: 0.9rem; /* 0.8rem에서 0.9rem으로 변경 */
+            font-weight: 700;
+            color: #059669;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .history-display {
+            color: #4b5563;
+            font-size: 1.1rem; 
+            height: 1.7rem; 
+            line-height: 1.7rem;
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
+            text-align: right;
+            font-weight: 600;
+            margin-top: 3.2rem; 
+            scrollbar-width: none;
+        }
+        .history-display::-webkit-scrollbar { display: none; }
+
+        .current-display {
+            color: #111827;
+            font-size: 1.7rem; 
+            font-weight: 700; 
+            width: 100%;
+            text-align: right;
+            word-break: break-all;
+            white-space: normal;
+            line-height: 1.1; 
+            max-height: 4.8rem; 
+            overflow-y: auto;
+            scrollbar-width: none;
+            margin-top: auto;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+        }
+        .current-display::-webkit-scrollbar { display: none; }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .btn {
+            aspect-ratio: 1 / 1;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem; 
+            font-weight: 700; 
+            transition: all 0.2s;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+            border: 2px solid #000000;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            filter: brightness(0.8);
+        }
+
+        .btn-number { background-color: #ffffff; color: #000000; }
+        .btn-operator { background-color: #4f46e5; color: white; font-size: 2.0rem; }
+        .btn-function { background-color: #e5e7eb; }
+        .text-mc { color: #2563eb; } 
+        .text-ac { color: #dc2626; } 
+        .text-del { color: #d97706; } 
+        .btn-memory { background-color: #d1d5db; font-size: 0.95rem; }
+        .text-ms { color: #059669; } 
+        .text-mr { color: #0ea5e9; } 
+        .btn-equal { background-color: #10b981; color: white; font-size: 2.0rem; }
+    </style>
+</head>
+<body>
+
+    <div class="calculator-card">
+        <div class="display-container">
+            <div class="memory-area">
+                <div id="mem1-row" class="memory-row">
+                    <span class="memory-tag">M1</span>
+                    <span id="mem1-preview" class="memory-preview">0</span>
+                </div>
+                <div id="mem2-row" class="memory-row">
+                    <span class="memory-tag" style="background: #0ea5e9;">M2</span>
+                    <span id="mem2-preview" class="memory-preview" style="color: #0ea5e9;">0</span>
+                </div>
+            </div>
+            
+            <div id="history" class="history-display"></div>
+            <div id="display" class="current-display">0</div>
+        </div>
+
+        <div class="grid-layout">
+            <div class="btn btn-memory text-ms" onclick="memorySave(1)">MS1</div>
+            <div class="btn btn-memory text-ms" onclick="memorySave(2)">MS2</div>
+            <div class="btn btn-memory text-mr" onclick="memoryRecall(1)">MR1</div>
+            <div class="btn btn-memory text-mr" onclick="memoryRecall(2)">MR2</div>
+
+            <div class="btn btn-function text-mc" onclick="memoryClear(1)" style="font-size: 1.1rem;">MC1</div>
+            <div class="btn btn-function text-mc" onclick="memoryClear(2)" style="font-size: 1.1rem;">MC2</div>
+            <div class="btn btn-function text-ac" onclick="clearAll()" style="font-size: 1.1rem;">AC</div>
+            <div class="btn btn-function text-del" onclick="deleteLast()" style="font-size: 1.4rem;">⌫</div>
+
+            <div class="btn btn-number" onclick="appendNumber('7')">7</div>
+            <div class="btn btn-number" onclick="appendNumber('8')">8</div>
+            <div class="btn btn-number" onclick="appendNumber('9')">9</div>
+            <div class="btn btn-operator" onclick="setOperator('/')">÷</div>
+
+            <div class="btn btn-number" onclick="appendNumber('4')">4</div>
+            <div class="btn btn-number" onclick="appendNumber('5')">5</div>
+            <div class="btn btn-number" onclick="appendNumber('6')">6</div>
+            <div class="btn btn-operator" onclick="setOperator('*')">×</div>
+
+            <div class="btn btn-number" onclick="appendNumber('1')">1</div>
+            <div class="btn btn-number" onclick="appendNumber('2')">2</div>
+            <div class="btn btn-number" onclick="appendNumber('3')">3</div>
+            <div class="btn btn-operator" onclick="setOperator('-')">−</div>
+
+            <div class="btn btn-number" onclick="appendNumber('0')">0</div>
+            <div class="btn btn-number" onclick="appendDecimal()">.</div>
+            <div class="btn btn-equal" onclick="calculate()">=</div>
+            <div class="btn btn-operator" onclick="setOperator('+')">+</div>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '0';
+        let runningTotal = null;
+        let operator = null;
+        let shouldResetScreen = false;
+        let isCalculationDone = false;
+        let historyPrefix = ''; 
+        let memory = { 1: null, 2: null }; 
+
+        const displayElement = document.getElementById('display');
+        const historyElement = document.getElementById('history');
+
+        function memorySave(id) {
+            if (currentInput === 'Error' || currentInput === 'Infinity') return;
+            memory[id] = currentInput;
+            const row = document.getElementById(`mem${id}-row`);
+            const preview = document.getElementById(`mem${id}-preview`);
+            preview.innerText = formatWithCommas(memory[id]);
+            row.classList.add('active');
+            displayElement.style.opacity = '0.5';
+            setTimeout(() => displayElement.style.opacity = '1', 100);
+        }
+
+        function memoryRecall(id) {
+            if (memory[id] !== null) {
+                currentInput = memory[id];
+                shouldResetScreen = false;
+                isCalculationDone = false;
+                updateDisplay();
+                updateHistoryLive();
+            }
+        }
+
+        function memoryClear(id) {
+            memory[id] = null;
+            document.getElementById(`mem${id}-row`).classList.remove('active');
+        }
+
+        function formatWithCommas(value) {
+            if (value === 'Error' || value === 'Infinity') return value;
+            const parts = value.toString().split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join('.');
+        }
+
+        function updateDisplay() {
+            displayElement.innerText = formatWithCommas(currentInput);
+            displayElement.scrollTop = displayElement.scrollHeight;
+        }
+
+        function updateHistoryLive() {
+            if (isCalculationDone) return;
+            historyElement.innerText = (historyPrefix ? historyPrefix + ' ' : '') + formatWithCommas(currentInput);
+            historyElement.scrollLeft = historyElement.scrollWidth;
+        }
+
+        function appendNumber(number) {
+            const digitCount = currentInput.replace(/[.,-]/g, '').length;
+            if (isCalculationDone) { 
+                historyPrefix = '';
+                historyElement.innerText = '';
+                runningTotal = null;
+                isCalculationDone = false;
+                currentInput = '0';
+            }
+            if (shouldResetScreen) { 
+                currentInput = number; 
+                shouldResetScreen = false; 
+            } else {
+                if (digitCount >= 20) return; 
+                if (currentInput === '0') currentInput = number;
+                else currentInput += number;
+            }
+            updateDisplay();
+            updateHistoryLive();
+        }
+
+        function appendDecimal() {
+            if (isCalculationDone) { 
+                historyPrefix = '';
+                historyElement.innerText = '';
+                runningTotal = null;
+                isCalculationDone = false; 
+                currentInput = '0';
+            }
+            if (shouldResetScreen) { 
+                currentInput = '0.'; 
+                shouldResetScreen = false; 
+                updateDisplay(); 
+                updateHistoryLive();
+                return; 
+            }
+            if (!currentInput.includes('.')) { 
+                currentInput += '.'; 
+                updateDisplay(); 
+                updateHistoryLive();
+            }
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            runningTotal = null;
+            operator = null;
+            isCalculationDone = false;
+            historyPrefix = '';
+            historyElement.innerText = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (isCalculationDone) { clearAll(); return; }
+            if (shouldResetScreen) return;
+            currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : '0';
+            if (currentInput === '-') currentInput = '0';
+            updateDisplay();
+            updateHistoryLive();
+        }
+
+        function performOperation(prev, current, op) {
+            const isPrevInt = !prev.toString().includes('.');
+            const isCurrentInt = !current.toString().includes('.');
+            if (isPrevInt && isCurrentInt) {
+                try {
+                    const bPrev = BigInt(prev);
+                    const bCurrent = BigInt(current);
+                    switch (op) {
+                        case '+': return (bPrev + bCurrent).toString();
+                        case '-': return (bPrev - bCurrent).toString();
+                        case '*': return (bPrev * bCurrent).toString();
+                        case '/': 
+                            if (bCurrent === 0n) return "Error";
+                            return (Number(bPrev) / Number(bCurrent)).toString();
+                    }
+                } catch(e) {}
+            }
+            const p = parseFloat(prev);
+            const c = parseFloat(current);
+            let res;
+            switch (op) {
+                case '+': res = p + c; break;
+                case '-': res = p - c; break;
+                case '*': res = p * c; break;
+                case '/': res = c === 0 ? "Error" : p / c; break;
+                default: res = c;
+            }
+            return res.toString();
+        }
+
+        function setOperator(op) {
+            const opSymbols = {'+': '+', '-': '−', '*': '×', '/': '÷'};
+            if (isCalculationDone) {
+                historyPrefix = formatWithCommas(currentInput) + ' ' + opSymbols[op];
+                runningTotal = currentInput;
+                isCalculationDone = false;
+            } else {
+                if (operator !== null && !shouldResetScreen) {
+                    const result = performOperation(runningTotal, currentInput, operator);
+                    if (result === "Error") {
+                        currentInput = "Error";
+                        updateDisplay();
+                        return;
+                    }
+                    historyPrefix += ' ' + formatWithCommas(currentInput) + ' ' + opSymbols[op];
+                    runningTotal = result;
+                    currentInput = result;
+                    updateDisplay();
+                } else {
+                    runningTotal = currentInput;
+                    historyPrefix = (historyPrefix === '' ? formatWithCommas(currentInput) : historyPrefix) + ' ' + opSymbols[op];
+                }
+            }
+            operator = op;
+            shouldResetScreen = true;
+            historyElement.innerText = historyPrefix;
+            historyElement.scrollLeft = historyElement.scrollWidth;
+        }
+
+        function calculate() {
+            if (operator === null || shouldResetScreen || isCalculationDone) return;
+            const curVal = currentInput;
+            const result = performOperation(runningTotal, currentInput, operator);
+            if (result === "Error") {
+                currentInput = "Error";
+                updateDisplay();
+                return;
+            }
+            const finalHistory = historyPrefix + ' ' + formatWithCommas(curVal) + ' =';
+            historyElement.innerText = finalHistory;
+            historyElement.scrollLeft = historyElement.scrollWidth;
+            currentInput = result;
+            operator = null;
+            runningTotal = null;
+            shouldResetScreen = true;
+            isCalculationDone = true;
+            updateDisplay();
+        }
+    </script>
+</body>
+</html>
+
